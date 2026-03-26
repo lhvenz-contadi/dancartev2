@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { GraduationCap, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
+import logo from '../assets/Logotipo.png';
 
 export const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -49,11 +50,7 @@ export const Login = () => {
         className="w-full max-w-[400px] bg-white rounded-[32px] p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-50"
       >
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-primary rounded-2xl p-3 shadow-lg shadow-primary/20 mb-4">
-            <GraduationCap size={32} className="text-white" />
-          </div>
-          <h1 className="text-2xl font-black text-primary tracking-tight">DancArte</h1>
-          <p className="text-accent text-sm font-medium uppercase tracking-[0.2em] mt-1">Gestão Escolar</p>
+          <img src={logo} alt="DancArte" className="w-[220px] h-auto mb-8" />
         </div>
 
         <div className="mb-8 text-center">

@@ -1,16 +1,17 @@
-import { 
-  LayoutDashboard, 
-  Users, 
-  BookOpen, 
-  Wallet, 
-  CalendarCheck, 
-  GraduationCap, 
-  Calendar, 
-  MessageSquare, 
+import {
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  Wallet,
+  CalendarCheck,
+  GraduationCap,
+  Calendar,
+  MessageSquare,
   BarChart3,
   Settings
 } from 'lucide-react';
 import { SidebarItem } from './SidebarItem';
+import logo from '../../assets/Logotipo.png';
 
 const menuItems = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -33,14 +34,8 @@ interface SidebarProps {
 export const Sidebar = ({ activeTab, onChangeTab }: SidebarProps) => {
   return (
     <aside className="w-64 bg-primary text-white flex flex-col shrink-0 z-10 shadow-sm">
-      <div className="p-6 flex items-center gap-3">
-        <div className="bg-white/10 rounded-lg p-2 shadow-sm flex items-center justify-center">
-          <GraduationCap size={24} className="text-white" />
-        </div>
-        <div className="flex flex-col">
-          <h1 className="text-2xl font-black tracking-tight text-white leading-none mt-1">DancArte</h1>
-          <span className="text-[10px] text-accent tracking-widest uppercase mt-0.5">Gestão Escolar</span>
-        </div>
+      <div className="px-6 py-5 flex items-center justify-center">
+        <img src={logo} alt="DancArte" className="w-[160px] h-auto brightness-0 invert" />
       </div>
       
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
