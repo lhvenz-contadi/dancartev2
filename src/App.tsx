@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Clock } from 'lucide-react';
-import { DashboardStats } from './types';
 
 // Layout
 import { Layout } from './components/layout/Layout';
@@ -25,7 +24,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -40,12 +38,6 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (session) {
-      fetch('/api/stats').then(res => res.json()).then(setStats);
-    }
-  }, [session]);
 
   if (!session) {
     return <Login />;
@@ -74,7 +66,10 @@ export default function App() {
           ) : selectedStudentId ? (
             <StudentDetail studentId={selectedStudentId} onBack={() => setSelectedStudentId(null)} />
           ) : activeTab === 'dashboard' ? (
-            <Dashboard stats={stats} />
+            <Dashboard
+              onChangeTab={(tab) => { setSelectedStudentId(null); setSelectedClassId(null); setActiveTab(tab); }}
+              onSelectStudent={(id) => { setSelectedStudentId(id); setActiveTab('students'); }}
+            />
           ) : activeTab === 'students' ? (
             <Students
               onAddClick={() => setActiveTab('new-student')}
