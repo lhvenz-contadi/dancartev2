@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import {
   Users, Wallet, AlertTriangle, CalendarCheck, Calendar,
   TrendingUp, TrendingDown, ArrowRight, CheckCircle2, Clock,
@@ -18,6 +18,7 @@ interface KpiData {
   prevDelinquencyRate: number;
   occupancyRate: number;
   classesToday: number;
+  attendanceDoneToday: number;
 }
 
 interface RevenuePoint { month: string; value: number }
@@ -180,6 +181,7 @@ export const Dashboard = ({
         { data: allPmts },
         { data: classesData },
         { data: schedToday },
+        { data: attToday },
       ] = await Promise.all([
         supabase.from('students').select('id', { count: 'exact', head: true })
           .not('status', 'in', '("Inativo","inativo","Cancelado","cancelado")'),
@@ -201,6 +203,8 @@ export const Dashboard = ({
           .eq('is_active', true),
         supabase.from('class_schedules').select('id, classes(is_active)')
           .eq('weekday', today.getDay()),
+        supabase.from('attendance').select('class_id')
+          .eq('date', todayStr),
       ]);
 
       const sumRevNow  = (revNow  ?? []).reduce((a, p: any) => a + (p.paid_amount ?? p.amount ?? 0), 0);
@@ -220,6 +224,8 @@ export const Dashboard = ({
       const occRate = totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0;
 
       const activeToday = (schedToday ?? []).filter((s: any) => s.classes?.is_active).length;
+      const doneClassIds = new Set((attToday ?? []).map((r: any) => r.class_id));
+      const attendanceDoneToday = doneClassIds.size;
 
       setKpi({
         activeStudents: activeNow ?? 0,
@@ -230,6 +236,7 @@ export const Dashboard = ({
         prevDelinquencyRate: 0,
         occupancyRate: occRate,
         classesToday: activeToday,
+        attendanceDoneToday,
       });
       setLoadingKpi(false);
     })();
@@ -447,6 +454,19 @@ export const Dashboard = ({
           deltaLabel="programadas"
           deltaType="absolute"
           onClick={() => navigate('agenda')}
+          foot={!loadingKpi && (kpi?.classesToday ?? 0) > 0 ? (
+            <div className="flex items-center gap-1.5">
+              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-secondary rounded-full transition-all duration-500"
+                  style={{ width: `${Math.round(((kpi?.attendanceDoneToday ?? 0) / (kpi?.classesToday ?? 1)) * 100)}%` }}
+                />
+              </div>
+              <span className="text-[11px] text-slate-400 whitespace-nowrap shrink-0">
+                {kpi?.attendanceDoneToday ?? 0}/{kpi?.classesToday ?? 0} chamadas
+              </span>
+            </div>
+          ) : undefined}
         />
       </div>
 
@@ -729,15 +749,16 @@ export const Dashboard = ({
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
 const KpiCard = ({
-  label, value, icon, delta, deltaLabel, deltaType, statusColor, onClick,
+  label, value, icon, delta, deltaLabel, deltaType, statusColor, foot, onClick,
 }: {
   label: string;
   value: string | null;
-  icon: React.ReactNode;
+  icon: ReactNode;
   delta: number | null;
   deltaLabel: string;
   deltaType: 'absolute' | 'percent';
   statusColor?: 'green' | 'orange' | 'red';
+  foot?: ReactNode;
   onClick?: () => void;
 }) => {
   const isLoading = value === null;
@@ -801,6 +822,7 @@ const KpiCard = ({
       ) : (
         <span className="text-[11px] text-slate-400">{deltaLabel}</span>
       )}
+      {foot && <div className="mt-1">{foot}</div>}
     </div>
   );
 };

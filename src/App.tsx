@@ -15,6 +15,7 @@ import { Classes } from './pages/Classes';
 import { NewClassForm } from './pages/NewClassForm';
 import { SettingsPage } from './pages/Settings';
 import { Agenda } from './pages/Agenda';
+import { Attendance } from './pages/Attendance';
 import { Login } from './pages/Login';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
@@ -92,6 +93,8 @@ export default function App() {
             />
           ) : activeTab === 'settings' ? (
             <SettingsPage />
+          ) : activeTab === 'attendance' ? (
+            <Attendance onChangeTab={(tab) => { setSelectedStudentId(null); setSelectedClassId(null); setActiveTab(tab); }} />
           ) : activeTab === 'agenda' ? (
             <Agenda onChangeTab={(tab) => { setSelectedStudentId(null); setSelectedClassId(null); setActiveTab(tab); }} />
           ) : (

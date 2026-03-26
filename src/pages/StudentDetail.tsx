@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Camera, Loader2, Save, Wallet, Plus, CheckCircle2, Clock, AlertTriangle, XCircle, Inbox, Sparkles, X } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ChevronLeft, Camera, Loader2, Save, Wallet, Plus, CheckCircle2, Clock, AlertTriangle, XCircle, Inbox, Sparkles, X, ClipboardCheck, UserCheck, TrendingUp, Filter } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import { useConfigOptions } from '../lib/useConfigOptions';
@@ -525,9 +525,191 @@ const FinancialTab = ({ studentId, studentName, studentPlan, studentValue, stude
   );
 };
 
+// ─── Attendance Tab ───────────────────────────────────────────────────────────
+
+type AttStatus = 'present' | 'absent' | 'late' | 'justified';
+
+const ATT_CFG: Record<AttStatus, { label: string; badge: string }> = {
+  present:   { label: 'Presente',    badge: 'bg-green-100 text-green-700 border-green-200' },
+  absent:    { label: 'Ausente',     badge: 'bg-red-100 text-red-700 border-red-200' },
+  late:      { label: 'Atraso',      badge: 'bg-amber-100 text-amber-700 border-amber-200' },
+  justified: { label: 'Justificada', badge: 'bg-blue-100 text-blue-700 border-blue-200' },
+};
+
+interface AttRec {
+  id: string;
+  date: string;
+  status: AttStatus;
+  notes: string | null;
+  class_id: string;
+  class_name: string;
+  modality: string | null;
+}
+
+const MODALITY_DOTS: Record<string, string> = {
+  'Ballet Clássico': 'bg-pink-400', Ballet: 'bg-pink-400',
+  Jazz: 'bg-purple-400', 'Contemporâneo': 'bg-blue-400',
+  'Hip-Hop': 'bg-orange-400', 'Hip Hop': 'bg-orange-400',
+  Sapateado: 'bg-amber-400', 'Dança do Ventre': 'bg-teal-400',
+  Forró: 'bg-green-400', Samba: 'bg-red-400',
+  'K-Pop': 'bg-violet-400', Stiletto: 'bg-rose-400', 'Baby Class': 'bg-yellow-400',
+};
+const modDot = (m: string | null) => m ? (MODALITY_DOTS[m] ?? 'bg-cyan-400') : 'bg-slate-300';
+
+const AttendanceTab = ({ studentId }: { studentId: string }) => {
+  const [records, setRecords] = useState<AttRec[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo,   setFilterTo]   = useState('');
+  const [filterClass, setFilterClass] = useState('');
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('attendance')
+        .select('id, date, status, notes, class_id, classes(name, modality)')
+        .eq('student_id', studentId)
+        .order('date', { ascending: false });
+      setRecords(
+        (data as any[] ?? []).map(r => ({
+          id:         r.id,
+          date:       r.date,
+          status:     r.status as AttStatus,
+          notes:      r.notes,
+          class_id:   r.class_id,
+          class_name: r.classes?.name ?? '—',
+          modality:   r.classes?.modality ?? null,
+        }))
+      );
+      setLoading(false);
+    };
+    load();
+  }, [studentId]);
+
+  const classOptions = useMemo(() => {
+    const seen = new Set<string>();
+    return records.filter(r => { if (seen.has(r.class_id)) return false; seen.add(r.class_id); return true; });
+  }, [records]);
+
+  const filtered = useMemo(() => records.filter(r => {
+    if (filterFrom && r.date < filterFrom) return false;
+    if (filterTo   && r.date > filterTo)   return false;
+    if (filterClass && r.class_id !== filterClass) return false;
+    return true;
+  }), [records, filterFrom, filterTo, filterClass]);
+
+  const total    = filtered.length;
+  const present  = filtered.filter(r => r.status === 'present' || r.status === 'late').length;
+  const absent   = filtered.filter(r => r.status === 'absent').length;
+  const rate     = total > 0 ? Math.round((present / total) * 100) : 0;
+
+  const rateColor = rate >= 80 ? 'text-green-600' : rate >= 60 ? 'text-amber-500' : 'text-red-500';
+  const rateBg    = rate >= 80 ? 'bg-green-50 border-green-100' : rate >= 60 ? 'bg-amber-50 border-amber-100' : 'bg-red-50 border-red-100';
+
+  const fmtDate = (s: string) => { const [y,m,d] = s.split('-'); return `${d}/${m}/${y}`; };
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-16">
+      <Loader2 size={24} className="animate-spin text-secondary" />
+    </div>
+  );
+
+  return (
+    <div className="space-y-5">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: 'Total de Aulas',    value: String(total),    cls: 'bg-slate-50 border-slate-100',              val: 'text-primary' },
+          { label: 'Presenças',         value: String(present),  cls: 'bg-green-50 border-green-100',              val: 'text-green-600' },
+          { label: 'Ausências',         value: String(absent),   cls: 'bg-red-50 border-red-100',                  val: 'text-red-500' },
+          { label: 'Taxa de Presença',  value: `${rate}%`,       cls: `${rateBg}`,                                 val: rateColor },
+        ].map(({ label, value, cls, val }) => (
+          <div key={label} className={cn('rounded-2xl border p-4', cls)}>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+            <p className={cn('text-2xl font-extrabold mt-1', val)}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3 bg-white rounded-2xl border border-slate-100 p-4 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)]">
+        <Filter size={14} className="text-slate-400 shrink-0" />
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-500">De</label>
+          <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
+            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary" />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-500">Até</label>
+          <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
+            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary" />
+        </div>
+        <select value={filterClass} onChange={e => setFilterClass(e.target.value)}
+          className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs text-slate-600 outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary bg-white">
+          <option value="">Todas as turmas</option>
+          {classOptions.map(r => (
+            <option key={r.class_id} value={r.class_id}>{r.class_name}</option>
+          ))}
+        </select>
+        {(filterFrom || filterTo || filterClass) && (
+          <button onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterClass(''); }}
+            className="text-xs font-semibold text-secondary hover:underline">
+            Limpar
+          </button>
+        )}
+      </div>
+
+      {/* Records list */}
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-14 text-center bg-white rounded-[20px] border border-slate-100">
+          <ClipboardCheck size={36} className="text-slate-200 mb-3" />
+          <p className="text-sm font-semibold text-slate-500">Nenhum registro encontrado</p>
+          <p className="text-xs text-slate-400 mt-1">Ajuste os filtros ou registre a chamada na tela de Frequência</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] overflow-hidden">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-slate-50">
+                <th className="px-5 py-3 text-[11px] font-extrabold text-primary uppercase tracking-wider">Data</th>
+                <th className="px-5 py-3 text-[11px] font-extrabold text-primary uppercase tracking-wider">Turma</th>
+                <th className="px-5 py-3 text-[11px] font-extrabold text-primary uppercase tracking-wider">Status</th>
+                <th className="px-5 py-3 text-[11px] font-extrabold text-primary uppercase tracking-wider hidden lg:table-cell">Observações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {filtered.map(r => {
+                const cfg = ATT_CFG[r.status];
+                return (
+                  <tr key={r.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="px-5 py-3 text-sm font-semibold text-slate-700 whitespace-nowrap">{fmtDate(r.date)}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className={cn('w-2 h-2 rounded-full shrink-0', modDot(r.modality))} />
+                        <span className="text-sm text-slate-700">{r.class_name}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3">
+                      <span className={cn('text-[11px] font-bold px-2 py-0.5 rounded-full border', cfg.badge)}>
+                        {cfg.label}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-xs text-slate-400 hidden lg:table-cell">{r.notes || '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export const StudentDetail = ({ studentId, onBack }: StudentDetailProps) => {
-  const [activeTab, setActiveTab] = useState<'dados' | 'financeiro'>('dados');
+  const [activeTab, setActiveTab] = useState<'dados' | 'financeiro' | 'frequencia'>('dados');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -647,17 +829,20 @@ export const StudentDetail = ({ studentId, onBack }: StudentDetailProps) => {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-        {(['dados', 'financeiro'] as const).map(tab => (
+        {([
+          { id: 'dados',      label: 'Dados',       icon: undefined },
+          { id: 'financeiro', label: 'Financeiro', icon: <Wallet size={15} /> },
+          { id: 'frequencia', label: 'Frequência', icon: <ClipboardCheck size={15} /> },
+        ] as const).map(({ id, label, icon }) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
+            key={id}
+            onClick={() => setActiveTab(id)}
             className={cn(
-              'px-5 py-2 rounded-lg text-sm font-bold transition-all capitalize flex items-center gap-2',
-              activeTab === tab ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'
+              'px-5 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2',
+              activeTab === id ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'
             )}
           >
-            {tab === 'financeiro' && <Wallet size={15} />}
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {icon}{label}
           </button>
         ))}
       </div>
