@@ -13,6 +13,7 @@ import { StudentDetail } from './pages/StudentDetail';
 import { Financial } from './pages/Financial';
 import { Classes } from './pages/Classes';
 import { NewClassForm } from './pages/NewClassForm';
+import { ClassDetail } from './pages/ClassDetail';
 import { SettingsPage } from './pages/Settings';
 import { Agenda } from './pages/Agenda';
 import { Attendance } from './pages/Attendance';
@@ -83,13 +84,12 @@ export default function App() {
             <Financial />
           ) : activeTab === 'new-class' ? (
             <NewClassForm onCancel={() => setActiveTab('classes')} />
+          ) : selectedClassId ? (
+            <ClassDetail classId={selectedClassId} onBack={() => setSelectedClassId(null)} />
           ) : activeTab === 'classes' ? (
             <Classes
               onAddClick={() => setActiveTab('new-class')}
-              onSelectClass={(id) => {
-                setSelectedClassId(id);
-                // TODO: ClassDetail page
-              }}
+              onSelectClass={(id) => setSelectedClassId(id)}
             />
           ) : activeTab === 'settings' ? (
             <SettingsPage />

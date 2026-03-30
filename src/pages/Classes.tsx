@@ -13,6 +13,7 @@ interface ClassRow {
   max_capacity: number;
   is_active: boolean;
   class_schedules: { weekday: number; start_time: string; end_time: string }[];
+  class_students?: { status: string }[];
 }
 
 const WEEKDAY_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -29,7 +30,7 @@ export const Classes = ({ onAddClick, onSelectClass }: { onAddClick: () => void;
       setLoading(true);
       const { data } = await supabase
         .from('classes')
-        .select('id, name, modality, level, teacher, room, max_capacity, is_active, class_schedules(weekday, start_time, end_time)')
+        .select('id, name, modality, level, teacher, room, max_capacity, is_active, class_schedules(weekday, start_time, end_time), class_students(status)')
         .order('name');
       setClasses((data as any[]) ?? []);
       setLoading(false);
@@ -100,6 +101,12 @@ export const Classes = ({ onAddClick, onSelectClass }: { onAddClick: () => void;
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(cls => {
             const sched = getScheduleSummary(cls.class_schedules);
+            const activeStudents = cls.class_students?.filter(s => s.status === 'active').length || 0;
+            const occupancyPercentage = cls.max_capacity > 0 ? (activeStudents / cls.max_capacity) * 100 : 0;
+            let occupancyColor = 'bg-green-500';
+            if (occupancyPercentage > 90) occupancyColor = 'bg-red-500';
+            else if (occupancyPercentage > 70) occupancyColor = 'bg-yellow-500';
+
             return (
               <div
                 key={cls.id}
@@ -150,10 +157,21 @@ export const Classes = ({ onAddClick, onSelectClass }: { onAddClick: () => void;
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between mt-5 pt-4 border-t border-slate-50">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    Máx. {cls.max_capacity} alunas
-                  </span>
+                <div className="mt-5 pt-4 border-t border-slate-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      {activeStudents}/{cls.max_capacity} alunas
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {Math.round(occupancyPercentage)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                      className={cn("h-full rounded-full transition-all", occupancyColor)}
+                      style={{ width: `${Math.min(occupancyPercentage, 100)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             );

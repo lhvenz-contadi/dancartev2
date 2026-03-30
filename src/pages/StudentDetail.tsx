@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, Camera, Loader2, Save, Wallet, Plus, CheckCircle2, Clock, AlertTriangle, XCircle, Inbox, Sparkles, X, ClipboardCheck, UserCheck, TrendingUp, Filter } from 'lucide-react';
+import { ChevronLeft, Camera, Loader2, Save, Wallet, Plus, CheckCircle2, Clock, AlertTriangle, XCircle, Inbox, Sparkles, X, ClipboardCheck, UserCheck, TrendingUp, Filter, Users, MapPin, Layers, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
 import { useConfigOptions } from '../lib/useConfigOptions';
@@ -707,9 +707,157 @@ const AttendanceTab = ({ studentId }: { studentId: string }) => {
   );
 };
 
+// ─── Classes Tab ─────────────────────────────────────────────────────────────
+const ClassesTab = ({ studentId }: { studentId: string }) => {
+  const [enrolled, setEnrolled] = useState<any[]>([]);
+  const [available, setAvailable] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const loadList = async () => {
+    setLoading(true);
+    // matriculadas
+    const { data } = await supabase
+      .from('class_students')
+      .select('*, classes(id, name, modality, teacher, max_capacity, class_students(student_id, status))')
+      .eq('student_id', studentId)
+      .eq('status', 'active');
+    setEnrolled(data ?? []);
+    setLoading(false);
+  };
+
+  const loadAvailable = async () => {
+    // all active classes
+    const { data: allClasses } = await supabase
+      .from('classes')
+      .select('*, class_schedules(*), class_students(student_id, status)')
+      .eq('is_active', true);
+      
+    // filter those where student is enrolled
+    const enrolledIds = enrolled.map(e => e.class_id);
+    const av = (allClasses ?? []).filter(c => !enrolledIds.includes(c.id));
+    setAvailable(av);
+  };
+
+  useEffect(() => { loadList(); }, [studentId]);
+
+  const handleOpenModal = () => { loadAvailable(); setShowModal(true); };
+
+  const handleEnroll = async (cls: any) => {
+    const activeCount = cls.class_students?.filter((s:any) => s.status === 'active').length || 0;
+    if (activeCount >= cls.max_capacity && !window.confirm('Turma lotada! Deseja pular o limite de capacidade e matricular mesmo assim?')) return;
+    
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('class_students').upsert({ class_id: cls.id, student_id: studentId, owner_id: user?.id, status: 'active' }, { onConflict: 'class_id, student_id' });
+      await loadList();
+      setAvailable(prev => prev.filter(c => c.id !== cls.id));
+    } catch(err:any){ alert(err.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleUnenroll = async (classId: string) => {
+    if (!window.confirm('Remover aluna da turma?')) return;
+    setSaving(true);
+    try {
+      await supabase.from('class_students').update({ status: 'inactive' }).eq('class_id', classId).eq('student_id', studentId);
+      await loadList();
+    } catch(err:any){ alert(err.message); }
+    finally { setSaving(false); }
+  };
+
+  if (loading) return <div className="flex items-center justify-center py-16"><Loader2 size={24} className="animate-spin text-secondary" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-primary">Turmas Matriculadas</h3>
+        <button onClick={handleOpenModal} className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-white rounded-full font-bold hover:bg-primary transition-all text-sm shadow-md shadow-secondary/20">
+          <Plus size={16} strokeWidth={3} />
+          Matricular em Turma
+        </button>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        {enrolled.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <Layers size={40} className="mb-3 opacity-30" />
+            <p className="font-medium">Aluna não está matriculada em nenhuma turma.</p>
+          </div>
+        ) : (
+          <table className="w-full text-left">
+            <tbody>
+              {enrolled.map(e => (
+                <tr key={e.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <td className="px-5 py-4">
+                    <p className="text-sm font-bold text-primary">{e.classes?.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {e.classes?.modality && <span className="text-[10px] bg-secondary/10 text-secondary px-2 py-0.5 rounded-full font-bold">{e.classes.modality}</span>}
+                      {e.classes?.teacher && <span className="text-[10px] text-slate-500 flex items-center gap-1"><Users size={10}/> {e.classes.teacher}</span>}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    <button onClick={() => handleUnenroll(e.class_id)} disabled={saving} className="text-xs font-bold text-red-500 hover:text-red-600 border border-transparent hover:border-red-100 bg-red-50 px-3 py-1.5 rounded-full transition-all disabled:opacity-50">
+                      Desmatricular
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+          <div onClick={ev => ev.stopPropagation()} className="bg-white rounded-[24px] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <h3 className="text-lg font-black text-primary">Matricular em Turma</h3>
+              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 bg-white shadow-sm border border-slate-100 rounded-full p-2"><X size={16} /></button>
+            </div>
+            
+            <div className="p-4 border-b border-slate-100">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input type="text" placeholder="Buscar turma pela modalidade, professor ou nome..." value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-slate-50 rounded-xl py-2 pl-9 pr-4 text-sm outline-none focus:ring-1 focus:ring-secondary/50 focus:border-secondary border border-transparent" />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-2">
+              {available.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()) || c.modality?.toLowerCase().includes(search.toLowerCase())).length === 0 ? (
+                <div className="text-center text-sm text-slate-400 py-10">Nenhuma turma disponível.</div>
+              ) : (
+                <div className="space-y-1">
+                  {available.filter(c => c.name?.toLowerCase().includes(search.toLowerCase()) || c.modality?.toLowerCase().includes(search.toLowerCase())).map(cls => {
+                    const activeStudents = cls.class_students?.filter((s:any) => s.status === 'active').length || 0;
+                    return (
+                      <div key={cls.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                        <div>
+                          <p className="text-sm font-semibold text-primary">{cls.name}</p>
+                          <p className="text-[11px] text-slate-400">{activeStudents}/{cls.max_capacity} vagas preenchidas</p>
+                        </div>
+                        <button onClick={() => handleEnroll(cls)} disabled={saving} className="text-xs font-bold text-secondary bg-secondary/10 px-3 py-1.5 rounded-full hover:bg-secondary/20 transition-colors disabled:opacity-50">
+                          Matricular
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export const StudentDetail = ({ studentId, onBack }: StudentDetailProps) => {
-  const [activeTab, setActiveTab] = useState<'dados' | 'financeiro' | 'frequencia'>('dados');
+  const [activeTab, setActiveTab] = useState<'dados' | 'financeiro' | 'frequencia' | 'turmas'>('dados');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -833,6 +981,7 @@ export const StudentDetail = ({ studentId, onBack }: StudentDetailProps) => {
           { id: 'dados',      label: 'Dados',       icon: undefined },
           { id: 'financeiro', label: 'Financeiro', icon: <Wallet size={15} /> },
           { id: 'frequencia', label: 'Frequência', icon: <ClipboardCheck size={15} /> },
+          { id: 'turmas',     label: 'Turmas',     icon: <Layers size={15} /> },
         ] as const).map(({ id, label, icon }) => (
           <button
             key={id}
@@ -858,6 +1007,10 @@ export const StudentDetail = ({ studentId, onBack }: StudentDetailProps) => {
           studentValue={formData.custom_value ? parseFloat(formData.custom_value) : 0}
           studentDueDay={formData.due_day ? parseInt(formData.due_day) : 10}
         />
+      ) : activeTab === 'frequencia' ? (
+        <AttendanceTab studentId={studentId} />
+      ) : activeTab === 'turmas' ? (
+        <ClassesTab studentId={studentId} />
       ) : (
         <form onSubmit={handleSave} className="space-y-6">
           {/* DADOS PESSOAIS */}
