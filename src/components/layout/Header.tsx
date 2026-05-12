@@ -8,7 +8,10 @@ interface HeaderProps {
 
 export const Header = ({ title, onLogout, onToggleSidebar }: HeaderProps) => {
   return (
-    <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-100 flex items-center px-4 md:px-8 shrink-0">
+    <header
+      className="sticky top-0 z-30 bg-white border-b border-slate-100 flex items-center px-4 md:px-8 shrink-0 h-16"
+      style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(4rem + env(safe-area-inset-top))' }}
+    >
       <button
         onClick={onToggleSidebar}
         className="md:hidden p-2 -ml-2 text-slate-500 hover:text-secondary transition-colors rounded-lg hover:bg-slate-50"

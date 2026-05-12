@@ -16,3 +16,11 @@
 body {
   overflow-x: hidden;
 }
+
+/* PWA standalone mode adjustments — applies when app is launched from home screen. */
+@media all and (display-mode: standalone) {
+  /* Ensures any fixed-bottom UI respects iOS home indicator. */
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

@@ -5,7 +5,9 @@
       "PowerShell(npm i *)",
       "PowerShell(npm run *)",
       "PowerShell(if \\(Test-Path node_modules/motion/react\\) { 'motion/react ok' } else { Get-ChildItem node_modules/motion -Directory | ForEach-Object { $_.Name } })",
-      "PowerShell(npx tsc --noEmit 2>&1 | Where-Object { $_ -match '^src/' })"
+      "PowerShell(npx tsc --noEmit 2>&1 | Where-Object { $_ -match '^src/' })",
+      "Bash(npm i *)",
+      "Bash(git stash *)"
     ]
   }
 }

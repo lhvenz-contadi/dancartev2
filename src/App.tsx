@@ -5,6 +5,11 @@ import { Clock } from 'lucide-react';
 // Layout
 import { Layout } from './components/layout/Layout';
 
+// PWA
+import { UpdatePrompt } from './components/pwa/UpdatePrompt';
+import { InstallPrompt } from './components/pwa/InstallPrompt';
+import { OfflineBanner } from './components/pwa/OfflineBanner';
+
 // Pages
 import { Dashboard } from './pages/Dashboard';
 import { Students } from './pages/Students';
@@ -42,7 +47,13 @@ export default function App() {
   }, []);
 
   if (!session) {
-    return <Login />;
+    return (
+      <>
+        <UpdatePrompt />
+        <OfflineBanner />
+        <Login />
+      </>
+    );
   }
 
   const handleLogout = async () => {
@@ -50,7 +61,11 @@ export default function App() {
   };
 
   return (
-    <Layout
+    <>
+      <UpdatePrompt />
+      <OfflineBanner />
+      <InstallPrompt />
+      <Layout
       activeTab={activeTab}
       onChangeTab={(tab) => { setSelectedStudentId(null); setSelectedClassId(null); setActiveTab(tab); }}
       onLogout={handleLogout}
@@ -107,5 +122,6 @@ export default function App() {
         </motion.div>
       </AnimatePresence>
     </Layout>
+    </>
   );
 }
