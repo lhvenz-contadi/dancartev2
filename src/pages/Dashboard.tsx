@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode, type CSSProperties } from 'react';
 import {
   Users, Wallet, AlertTriangle, CalendarCheck, Calendar,
   TrendingUp, TrendingDown, ArrowRight, CheckCircle2, Clock,
@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
+import { fmtBRL, fmtTime, relativeTime, MONTHS, MONTHS_SHORT, WEEKDAYS_LONG } from '../lib/format';
+import { getModalityDot, getModalityHex } from '../lib/colors';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -54,74 +56,10 @@ interface ActivityItem {
   timestamp: string;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-const fmtBRL = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-const fmtTime = (t: string) => t?.slice(0, 5) ?? '';
-
-const relativeTime = (iso: string): string => {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 2)  return 'agora mesmo';
-  if (mins < 60) return `há ${mins} minutos`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `há ${hrs} hora${hrs > 1 ? 's' : ''}`;
-  const days = Math.floor(hrs / 24);
-  if (days === 1) return 'ontem';
-  if (days < 7)  return `há ${days} dias`;
-  return new Date(iso).toLocaleDateString('pt-BR');
-};
-
-const MONTHS_SHORT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
-// Modality color palette (same as Agenda)
-const MODALITY_COLORS: Record<string, string> = {
-  'Ballet Clássico': 'bg-pink-400',
-  Ballet:            'bg-pink-400',
-  Jazz:              'bg-purple-400',
-  'Contemporâneo':   'bg-blue-400',
-  'Hip-Hop':         'bg-orange-400',
-  'Hip Hop':         'bg-orange-400',
-  Sapateado:         'bg-amber-400',
-  'Dança do Ventre': 'bg-teal-400',
-  Forró:             'bg-green-400',
-  Samba:             'bg-red-400',
-  'K-Pop':           'bg-violet-400',
-  Stiletto:          'bg-rose-400',
-  'Baby Class':      'bg-yellow-400',
-};
-
-const MODALITY_HEX: Record<string, string> = {
-  'Ballet Clássico': '#f472b6',
-  Ballet:            '#f472b6',
-  Jazz:              '#c084fc',
-  'Contemporâneo':   '#60a5fa',
-  'Hip-Hop':         '#fb923c',
-  'Hip Hop':         '#fb923c',
-  Sapateado:         '#fbbf24',
-  'Dança do Ventre': '#2dd4bf',
-  Forró:             '#4ade80',
-  Samba:             '#f87171',
-  'K-Pop':           '#a78bfa',
-  Stiletto:          '#fb7185',
-  'Baby Class':      '#facc15',
-};
-
-const FALLBACK_COLORS = ['#60a5fa','#a78bfa','#34d399','#f472b6','#fbbf24','#fb923c'];
-
-const getModalityDot = (mod: string | null) =>
-  mod ? (MODALITY_COLORS[mod] ?? 'bg-cyan-400') : 'bg-slate-300';
-
-const getModalityHex = (mod: string | null, idx = 0): string =>
-  mod ? (MODALITY_HEX[mod] ?? FALLBACK_COLORS[idx % FALLBACK_COLORS.length])
-      : FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
-
 // ─── Skeleton ──────────────────────────────────────────────────────────────
 
-const Skeleton = ({ className }: { className?: string }) => (
-  <div className={cn('animate-pulse bg-slate-100 rounded-lg', className)} />
+const Skeleton = ({ className, style }: { className?: string; style?: CSSProperties }) => (
+  <div className={cn('animate-pulse bg-slate-100 rounded-lg', className)} style={style} />
 );
 
 // ─── Main Component ────────────────────────────────────────────────────────
@@ -134,9 +72,8 @@ export const Dashboard = ({
   onSelectStudent?: (id: string) => void;
 }) => {
   const today = new Date();
-  const dayNames = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
   const greeting = today.getHours() < 12 ? 'Bom dia' : today.getHours() < 18 ? 'Boa tarde' : 'Boa noite';
-  const todayLabel = `${dayNames[today.getDay()]}, ${today.getDate()} de ${['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][today.getMonth()]} de ${today.getFullYear()}`;
+  const todayLabel = `${WEEKDAYS_LONG[today.getDay()]}, ${today.getDate()} de ${MONTHS[today.getMonth()]} de ${today.getFullYear()}`;
 
   const [userName, setUserName] = useState('');
   const [kpi, setKpi] = useState<KpiData | null>(null);
@@ -401,7 +338,7 @@ export const Dashboard = ({
       </div>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
         <KpiCard
           label="Alunos Ativos"
           value={loadingKpi ? null : String(kpi?.activeStudents ?? 0)}
@@ -471,29 +408,29 @@ export const Dashboard = ({
       </div>
 
       {/* ── Charts ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
 
         {/* Revenue bar chart */}
-        <div className="lg:col-span-3 bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] p-5">
-          <div className="flex items-center justify-between mb-5">
+        <div className="md:col-span-3 bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] p-4 md:p-5">
+          <div className="flex items-center justify-between mb-4 md:mb-5 gap-2">
             <div>
               <h3 className="font-bold text-primary">Receita Mensal</h3>
               <p className="text-xs text-slate-400 mt-0.5">Últimos 6 meses</p>
             </div>
             {refLine > 0 && (
-              <span className="text-xs text-slate-400 border border-dashed border-slate-300 px-2.5 py-1 rounded-full">
-                Referência: {fmtBRL(refLine)}
+              <span className="text-[10px] md:text-xs text-slate-400 border border-dashed border-slate-300 px-2 md:px-2.5 py-1 rounded-full whitespace-nowrap shrink-0">
+                Ref: {fmtBRL(refLine)}
               </span>
             )}
           </div>
           {loadingRevenue ? (
-            <div className="flex items-end gap-3 h-44">
+            <div className="flex items-end gap-3 h-56 md:h-72">
               {Array(6).fill(0).map((_, i) => (
-                <Skeleton key={i} className={`flex-1 rounded-xl`} style={{ height: `${30 + i * 10}%` } as any} />
+                <Skeleton key={i} className="flex-1 rounded-xl" style={{ height: `${30 + i * 10}%` }} />
               ))}
             </div>
           ) : (
-            <div className="relative h-44">
+            <div className="relative h-56 md:h-72">
               {/* Reference line */}
               {refLine > 0 && (
                 <div
@@ -529,8 +466,8 @@ export const Dashboard = ({
         </div>
 
         {/* Donut chart */}
-        <div className="lg:col-span-2 bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] p-5">
-          <div className="mb-5">
+        <div className="md:col-span-2 bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] p-4 md:p-5">
+          <div className="mb-4 md:mb-5">
             <h3 className="font-bold text-primary">Alunos por Modalidade</h3>
             <p className="text-xs text-slate-400 mt-0.5">Distribuição atual</p>
           </div>
@@ -542,11 +479,11 @@ export const Dashboard = ({
             <div className="flex flex-col items-center justify-center h-32 text-center">
               <BookOpen size={28} className="text-slate-200 mb-2" />
               <p className="text-sm text-slate-400">Nenhuma modalidade com alunos</p>
-              <button onClick={() => navigate('classes')} className="mt-2 text-xs font-semibold text-secondary hover:underline">Cadastrar Turma</button>
+              <button onClick={() => navigate('classes')} className="mt-2 text-xs font-semibold text-secondary hover:underline inline-flex items-center min-h-11 px-3">Cadastrar Turma</button>
             </div>
           ) : (
-            <div className="flex items-center gap-4">
-              <svg viewBox="0 0 128 128" className="w-28 h-28 shrink-0 -rotate-90">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <svg viewBox="0 0 128 128" className="w-32 h-32 sm:w-28 sm:h-28 shrink-0 -rotate-90">
                 {donutSegments.map((seg, i) => (
                   <circle
                     key={i}
@@ -563,9 +500,9 @@ export const Dashboard = ({
                   />
                 ))}
               </svg>
-              <div className="flex-1 space-y-1.5 overflow-hidden">
+              <div className="w-full sm:flex-1 space-y-0.5 overflow-hidden">
                 {modalities.slice(0, 6).map((m, i) => (
-                  <div key={m.modality} className="flex items-center gap-2 cursor-pointer hover:opacity-75 transition-opacity" onClick={() => navigate('classes')}>
+                  <div key={m.modality} className="flex items-center gap-2 cursor-pointer hover:opacity-75 transition-opacity min-h-10 py-1" onClick={() => navigate('classes')}>
                     <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: getModalityHex(m.modality, i) }} />
                     <span className="text-[11px] font-medium text-slate-600 truncate flex-1">{m.modality}</span>
                     <span className="text-[11px] font-bold text-slate-500 shrink-0">{m.count}</span>
@@ -585,7 +522,7 @@ export const Dashboard = ({
 
         {/* Overdue payments */}
         <div className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] flex flex-col">
-          <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-50">
+          <div className="flex items-center justify-between px-4 md:px-5 pt-4 md:pt-5 pb-3 border-b border-slate-50">
             <div className="flex items-center gap-2.5">
               <h3 className="font-bold text-primary">Mensalidades Atrasadas</h3>
               {!loadingOverdue && overdue.length > 0 && (
@@ -593,7 +530,7 @@ export const Dashboard = ({
               )}
             </div>
             {overdue.length > 0 && (
-              <button onClick={() => navigate('financial')} className="text-xs font-semibold text-secondary hover:underline flex items-center gap-1">
+              <button onClick={() => navigate('financial')} className="text-xs font-semibold text-secondary hover:underline inline-flex items-center gap-1 min-h-11 px-2 -mr-2">
                 Ver todos <ArrowRight size={12} />
               </button>
             )}
@@ -638,12 +575,12 @@ export const Dashboard = ({
 
         {/* Today's classes */}
         <div className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] flex flex-col">
-          <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-50">
+          <div className="flex items-center justify-between px-4 md:px-5 pt-4 md:pt-5 pb-3 border-b border-slate-50">
             <div>
               <h3 className="font-bold text-primary">Agenda de Hoje</h3>
               <p className="text-xs text-slate-400 mt-0.5">{today.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
             </div>
-            <button onClick={() => navigate('agenda')} className="text-xs font-semibold text-secondary hover:underline flex items-center gap-1">
+            <button onClick={() => navigate('agenda')} className="text-xs font-semibold text-secondary hover:underline inline-flex items-center gap-1 min-h-11 px-2 -mr-2">
               Agenda <ArrowRight size={12} />
             </button>
           </div>
@@ -703,7 +640,7 @@ export const Dashboard = ({
       </div>
 
       {/* ── Recent Activity ── */}
-      <div className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] p-5">
+      <div className="bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] p-4 md:p-5">
         <h3 className="font-bold text-primary mb-4">Atividade Recente</h3>
         {loadingActivity ? (
           <div className="space-y-3">
@@ -775,21 +712,21 @@ const KpiCard = ({
     <div
       onClick={onClick}
       className={cn(
-        'bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] p-4 flex flex-col gap-2',
+        'bg-white rounded-[20px] border border-slate-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] p-3 md:p-4 flex flex-col gap-2',
         onClick && 'cursor-pointer hover:shadow-md hover:border-secondary/20 transition-all',
       )}
     >
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-tight">{label}</p>
-        <div className="w-8 h-8 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary shrink-0">
+        <p className="text-[10px] md:text-[11px] font-bold text-slate-400 uppercase tracking-wider leading-tight">{label}</p>
+        <div className="w-7 h-7 md:w-8 md:h-8 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary shrink-0">
           {icon}
         </div>
       </div>
 
       {isLoading ? (
-        <Skeleton className="h-8 w-24 rounded-lg" />
+        <Skeleton className="h-7 md:h-8 w-20 md:w-24 rounded-lg" />
       ) : (
-        <p className={cn('text-2xl font-extrabold', statusColor ? statusColors[statusColor] : 'text-primary')}>
+        <p className={cn('text-xl md:text-2xl font-extrabold', statusColor ? statusColors[statusColor] : 'text-primary')}>
           {value}
         </p>
       )}

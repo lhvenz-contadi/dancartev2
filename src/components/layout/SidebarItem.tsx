@@ -2,15 +2,14 @@ import { cn } from '../../lib/utils';
 import { LucideIcon } from 'lucide-react';
 
 interface SidebarItemProps {
-  key?: string;
   icon: LucideIcon;
   label: string;
   active?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
 }
 
 export const SidebarItem = ({ icon: Icon, label, active, onClick }: SidebarItemProps) => (
-  <button 
+  <button
     onClick={onClick}
     className={cn(
       "flex items-center gap-3 px-4 py-3 rounded-[10px] transition-all w-full text-left font-medium group",

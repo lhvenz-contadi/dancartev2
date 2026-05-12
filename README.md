@@ -1,20 +1,18 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# DancArte SaaS
 
-# Run and deploy your AI Studio app
+Sistema de gestão para escola de dança. Stack: React 19 + Vite + TailwindCSS 4 + Supabase.
 
-This contains everything you need to run your app locally.
+## Setup
 
-View your app in AI Studio: https://ai.studio/apps/14d2cb7c-db57-444b-8300-6c8a0433c611
+1. `npm install`
+2. Copiar `.env.example` → `.env` e preencher `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`
+3. `npm run dev`
 
-## Run Locally
+## Scripts
 
-**Prerequisites:**  Node.js
+- `npm run dev` — Servidor dev em `localhost:3000`
+- `npm run build` — Build de produção em `/dist`
+- `npm run lint` — Typecheck (`tsc --noEmit`)
+- `npm run preview` — Preview do build
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Para detalhes de arquitetura, ver [CLAUDE.md](CLAUDE.md).
